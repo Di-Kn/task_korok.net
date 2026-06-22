@@ -1,11 +1,11 @@
-export async function regUser(userData) {
+export async function createApplication(applicationData) {
     try {
-        let response = await fetch('http://localhost:3000/regUser', {
+        let response = await fetch('http://localhost:3000/application', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json;charset=utf-8'
             },
-            body: JSON.stringify(userData)
+            body: JSON.stringify(applicationData)
         })
         return await response.json()
     } catch (error) {

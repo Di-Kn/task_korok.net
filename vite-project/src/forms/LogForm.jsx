@@ -61,9 +61,7 @@ export function LogForm({text, textBtn, loginUser}){
         }
 
         try {
-            const result = await loginUser(userData)
-            
-            // Очищаем форму после успешного входа
+            await loginUser(userData)
             setLogin('')
             setPassword('')
             setErrors({})
@@ -79,7 +77,7 @@ export function LogForm({text, textBtn, loginUser}){
         <form onSubmit={handleSubmit}>
             <h2>{text}</h2>
 
-            {errors.general && <div className="error-message">{errors.general}</div>}
+            {errors.general && <div>{errors.general}</div>}
 
             <div>
                 <input
@@ -87,11 +85,10 @@ export function LogForm({text, textBtn, loginUser}){
                     value={login}
                     placeholder='Login'
                     onChange={onChangeLogin}
-                    className={errors.login ? 'error' : ''}
                     required
                     disabled={isSubmitting}
                 />
-                {errors.login && <span className="error-message">{errors.login}</span>}
+                {errors.login && <span>{errors.login}</span>}
             </div>
 
             <div>
@@ -100,11 +97,10 @@ export function LogForm({text, textBtn, loginUser}){
                     value={password}
                     placeholder='Password'
                     onChange={onChangePassword}
-                    className={errors.password ? 'error' : ''}
                     required
                     disabled={isSubmitting}
                 />
-                {errors.password && <span className="error-message">{errors.password}</span>}
+                {errors.password && <span>{errors.password}</span>}
             </div>
 
             <button type='submit' disabled={isSubmitting}>

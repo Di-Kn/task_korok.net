@@ -1,53 +1,48 @@
 import { useState } from 'react'
+import { createApplication } from '../fetch/createApplication'
 
-export function ApplicationForm({ currentUser, onLogout }) {
+export function ApplicationForm({ 
+    currentUser, 
+    onLogout, 
+    applications, 
+    onApplicationCreated,
+    loading 
+}) {
     const [ap_name, setApName] = useState('')
     const [ap_date, setApDate] = useState('')
-    const [ap_pay, setApPay] = useState('')
-    const [paymentMethod, setPaymentMethod] = useState('cash') // 'cash' или 'transfer'
-    const [applications, setApplications] = useState([
-        {
-            id: 1,
-            course_name: 'JavaScript для начинающих',
-            date: '2024-12-01',
-            payment_method: 'Наличный',
-            status: 'Новая'
-        },
-        {
-            id: 2,
-            course_name: 'Python для анализа данных',
-            date: '2024-11-15',
-            payment_method: 'Безналичный',
-            status: 'Идет обучение'
-        }
-    ])
+    const [paymentMethod, setPaymentMethod] = useState('cash')
+    const [isSubmitting, setIsSubmitting] = useState(false)
 
     const handleSubmit = async (e) => {
         e.preventDefault()
-        const applicationData = { 
-            ap_name, 
-            ap_date, 
-            ap_pay,
-            payment_method: paymentMethod === 'cash' ? 'Наличный' : 'Безналичный',
+        setIsSubmitting(true)
+
+        const applicationData = {
             user_id: currentUser.id,
-            status: 'Новая'
-        }
-        
-        const newApp = {
-            id: applications.length + 1,
+            user_login: currentUser.login,
             course_name: ap_name,
-            date: ap_date,
-            payment_method: applicationData.payment_method,
+            start_date: ap_date,
+            payment_method: paymentMethod === 'cash' ? 'Наличный' : 'Безналичный',
             status: 'Новая'
         }
-        
-        setApplications([...applications, newApp])
-        alert('Заявка успешно подана!')
-        
-        setApName('')
-        setApDate('')
-        setApPay('')
-        setPaymentMethod('cash')
+
+        try {
+            const result = await createApplication(applicationData)
+            if (result && result.success) {
+                alert('Заявка успешно подана!')
+                setApName('')
+                setApDate('')
+                setPaymentMethod('cash')
+                onApplicationCreated()
+            } else {
+                alert(result?.error || 'Ошибка при подаче заявки')
+            }
+        } catch (error) {
+            console.error('Ошибка:', error)
+            alert('Произошла ошибка при подаче заявки')
+        } finally {
+            setIsSubmitting(false)
+        }
     }
 
     const getStatusColor = (status) => {
@@ -59,95 +54,140 @@ export function ApplicationForm({ currentUser, onLogout }) {
         }
     }
 
+    const getStatusEmoji = (status) => {
+        switch(status) {
+            case 'Новая': return '🆕'
+            case 'Идет обучение': return '📚'
+            case 'Обучение завершено': return '✅'
+            default: return '📌'
+        }
+    }
+
     return (
-        <div className="application-container">
-            <div className="app-header">
-                <h2>Добро пожаловать, {currentUser.full_name}!</h2>
-                <button onClick={onLogout} className="logout-btn">Выйти</button>
+        <div>
+            <div>
+                <div>
+                    <h2>Добро пожаловать, {currentUser.full_name}!</h2>
+                    <span>@{currentUser.login}</span>
+                </div>
+                <button onClick={onLogout}>Выйти</button>
             </div>
 
-            <div className="app-content">
-                {}
-                <div className="app-form-section">
-                    <h3>📝 Подача заявки на обучение</h3>
-                    <form onSubmit={handleSubmit} className="app-form">
-                        <div className="form-group">
-                            <label>Название курса *</label>
-                            <input 
-                                type="text" 
-                                placeholder="Введите название курса" 
-                                value={ap_name}
-                                onChange={(e) => setApName(e.target.value)}
-                                required 
-                            />
-                        </div>
+            <div>
+                <div>
+                    <h3>Подача заявки на обучение</h3>
+                    <span>Заполните все поля для подачи заявки</span>
+                </div>
+                
+                <form onSubmit={handleSubmit}>
+                    <div>
+                        <label>Название курса *</label>
+                        <input 
+                            type="text" 
+                            placeholder="Введите название курса"
+                            value={ap_name}
+                            onChange={(e) => setApName(e.target.value)}
+                            required 
+                            disabled={isSubmitting}
+                        />
+                    </div>
 
-                        <div className="form-group">
-                            <label>Желаемая дата начала обучения *</label>
-                            <input 
-                                type="date" 
-                                value={ap_date}
-                                onChange={(e) => setApDate(e.target.value)}
-                                required 
-                            />
-                        </div>
+                    <div>
+                        <label>Желаемая дата начала обучения *</label>
+                        <input 
+                            type="date" 
+                            value={ap_date}
+                            onChange={(e) => setApDate(e.target.value)}
+                            required 
+                            disabled={isSubmitting}
+                            min={new Date().toISOString().split('T')[0]}
+                        />
+                    </div>
 
-                        <div className="form-group">
-                            <label>Способ оплаты *</label>
-                            <div className="payment-options">
-                                <label>
-                                    <input 
-                                        type="radio" 
-                                        value="cash"
-                                        checked={paymentMethod === 'cash'}
-                                        onChange={(e) => setPaymentMethod(e.target.value)}
-                                    />
-                                    Наличными
-                                </label>
-                                <label>
-                                    <input 
-                                        type="radio" 
-                                        value="transfer"
-                                        checked={paymentMethod === 'transfer'}
-                                        onChange={(e) => setPaymentMethod(e.target.value)}
-                                    />
-                                    Перевод по номеру телефона
-                                </label>
-                            </div>
+                    <div>
+                        <label>Способ оплаты *</label>
+                        <div>
+                            <label>
+                                <input 
+                                    type="radio" 
+                                    value="cash"
+                                    checked={paymentMethod === 'cash'}
+                                    onChange={(e) => setPaymentMethod(e.target.value)}
+                                    disabled={isSubmitting}
+                                />
+                                <span>Наличными</span>
+                            </label>
+                            <label>
+                                <input 
+                                    type="radio" 
+                                    value="transfer"
+                                    checked={paymentMethod === 'transfer'}
+                                    onChange={(e) => setPaymentMethod(e.target.value)}
+                                    disabled={isSubmitting}
+                                />
+                                <span>Перевод по номеру телефона</span>
+                            </label>
                         </div>
+                    </div>
 
-                        <button type="submit" className="submit-btn">Отправить заявку</button>
-                    </form>
+                    <button type="submit" disabled={isSubmitting}>
+                        {isSubmitting ? 'Отправка...' : 'Отправить заявку'}
+                    </button>
+                </form>
+            </div>
+
+            <div>
+                <div>
+                    <h3>Мои заявки</h3>
+                    <span>
+                        {applications.length > 0 
+                            ? `Всего: ${applications.length} заявок` 
+                            : 'У вас пока нет заявок'}
+                    </span>
                 </div>
 
-                {}
-                <div className="app-list-section">
-                    <h3>📋 Мои заявки</h3>
-                    {applications.length === 0 ? (
-                        <p className="no-applications">У вас пока нет заявок</p>
-                    ) : (
-                        <div className="applications-grid">
-                            {applications.map((app) => (
-                                <div key={app.id} className="app-card">
+                {loading ? (
+                    <div>Загрузка заявок...</div>
+                ) : applications.length === 0 ? (
+                    <div>
+                        <div>📭</div>
+                        <p>У вас пока нет заявок</p>
+                        <span>Создайте свою первую заявку выше!</span>
+                    </div>
+                ) : (
+                    <div>
+                        {applications.map((app) => (
+                            <div key={app.id}>
+                                <div>
                                     <h4>{app.course_name}</h4>
-                                    <div className="app-details">
-                                        <p><strong>Дата начала:</strong> {app.date}</p>
-                                        <p><strong>Способ оплаты:</strong> {app.payment_method}</p>
-                                        <p>
-                                            <strong>Статус:</strong> 
-                                            <span 
-                                                className="status-badge"
-                                                style={{backgroundColor: getStatusColor(app.status)}}
-                                            >
-                                                {app.status}
-                                            </span>
-                                        </p>
+                                    <span style={{backgroundColor: getStatusColor(app.status)}}>
+                                        {getStatusEmoji(app.status)} {app.status}
+                                    </span>
+                                </div>
+                                <div>
+                                    <div>
+                                        <span>Дата начала:</span>
+                                        <span>{app.start_date}</span>
+                                    </div>
+                                    <div>
+                                        <span>Способ оплаты:</span>
+                                        <span>{app.payment_method}</span>
+                                    </div>
+                                    <div>
+                                        <span>Номер заявки:</span>
+                                        <span>#{app.id}</span>
+                                    </div>
+                                    <div>
+                                        <span>Создана:</span>
+                                        <span>
+                                            {new Date(app.created_at).toLocaleDateString('ru-RU')}
+                                        </span>
                                     </div>
                                 </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     )

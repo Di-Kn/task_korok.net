@@ -1,64 +1,97 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { getAllApplications } from '../fetch/getAllApplications'
+import { updateApplicationStatus } from '../fetch/updateApplicationStatus'
 
 export function AdminPanel({ onLogout, currentUser }) {
-    // Состояния для отображения данных (без реального функционала)
-    const [applications, setApplications] = useState([
-        {
-            id: 1,
-            user_name: 'Иванов Иван Иванович',
-            course_name: 'JavaScript для начинающих',
-            date: '2024-12-01',
-            payment_method: 'Безналичный',
-            status: 'Новая'
-        },
-        {
-            id: 2,
-            user_name: 'Петрова Анна Сергеевна',
-            course_name: 'Python для анализа данных',
-            date: '2024-12-15',
-            payment_method: 'Наличный',
-            status: 'Новая'
-        },
-        {
-            id: 3,
-            user_name: 'Сидоров Алексей Петрович',
-            course_name: 'Java: основы программирования',
-            date: '2024-11-20',
-            payment_method: 'Безналичный',
-            status: 'Идет обучение'
-        },
-        {
-            id: 4,
-            user_name: 'Козлова Мария Дмитриевна',
-            course_name: 'C++ для начинающих',
-            date: '2024-10-15',
-            payment_method: 'Наличный',
-            status: 'Обучение завершено'
-        }
-    ])
+    const [applications, setApplications] = useState([])
+    const [filteredApplications, setFilteredApplications] = useState([])
+    const [loading, setLoading] = useState(false)
+    const [filter, setFilter] = useState('all')
+    const [searchTerm, setSearchTerm] = useState('')
+    const [stats, setStats] = useState({
+        total: 0,
+        new: 0,
+        inProgress: 0,
+        completed: 0
+    })
+    const [updatingId, setUpdatingId] = useState(null)
 
-    // Состояние для выбранного статуса (без реального обновления)
-    const [selectedStatus, setSelectedStatus] = useState({})
-
-    // Статусы для выбора (только для отображения)
     const statusOptions = ['Новая', 'Идет обучение', 'Обучение завершено']
 
-    // Обработчик изменения статуса (без реального функционала)
-    const handleStatusChange = (appId, newStatus) => {
-        // Только для демонстрации - показываем уведомление
-        alert(`Заявка #${appId}: статус изменен на "${newStatus}" (демонстрация, без сохранения)`)
-        setSelectedStatus(prev => ({...prev, [appId]: newStatus}))
+    const loadApplications = async () => {
+        setLoading(true)
+        try {
+            const data = await getAllApplications()
+            setApplications(data)
+            updateStats(data)
+            applyFilters(data, filter, searchTerm)
+        } catch (error) {
+            console.error('Ошибка загрузки заявок:', error)
+            alert('Ошибка при загрузке заявок')
+        } finally {
+            setLoading(false)
+        }
     }
 
-    // Подсчет статистики
-    const stats = {
-        total: applications.length,
-        new: applications.filter(app => app.status === 'Новая').length,
-        inProgress: applications.filter(app => app.status === 'Идет обучение').length,
-        completed: applications.filter(app => app.status === 'Обучение завершено').length
+    useEffect(() => {
+        loadApplications()
+    }, [])
+
+    useEffect(() => {
+        applyFilters(applications, filter, searchTerm)
+    }, [filter, searchTerm, applications])
+
+    const updateStats = (apps) => {
+        setStats({
+            total: apps.length,
+            new: apps.filter(app => app.status === 'Новая').length,
+            inProgress: apps.filter(app => app.status === 'Идет обучение').length,
+            completed: apps.filter(app => app.status === 'Обучение завершено').length
+        })
     }
 
-    // Функция для получения цвета статуса
+    const applyFilters = (apps, filterType, search) => {
+        let filtered = [...apps]
+
+        if (filterType !== 'all') {
+            const statusMap = {
+                'new': 'Новая',
+                'progress': 'Идет обучение',
+                'completed': 'Обучение завершено'
+            }
+            filtered = filtered.filter(app => app.status === statusMap[filterType])
+        }
+
+        if (search.trim()) {
+            const searchLower = search.toLowerCase().trim()
+            filtered = filtered.filter(app => 
+                app.course_name.toLowerCase().includes(searchLower) ||
+                app.user_full_name.toLowerCase().includes(searchLower) ||
+                app.user_login.toLowerCase().includes(searchLower)
+            )
+        }
+
+        setFilteredApplications(filtered)
+    }
+
+    const handleStatusChange = async (appId, newStatus) => {
+        setUpdatingId(appId)
+        try {
+            const result = await updateApplicationStatus(appId, newStatus)
+            if (result && result.success) {
+                alert(`Статус заявки #${appId} изменен на "${newStatus}"`)
+                await loadApplications()
+            } else {
+                alert(result?.error || 'Ошибка при обновлении статуса')
+            }
+        } catch (error) {
+            console.error('Ошибка:', error)
+            alert('Произошла ошибка при обновлении статуса')
+        } finally {
+            setUpdatingId(null)
+        }
+    }
+
     const getStatusColor = (status) => {
         switch(status) {
             case 'Новая': return '#ff9800'
@@ -68,101 +101,170 @@ export function AdminPanel({ onLogout, currentUser }) {
         }
     }
 
+    const getStatusEmoji = (status) => {
+        switch(status) {
+            case 'Новая': return '🆕'
+            case 'Идет обучение': return '📚'
+            case 'Обучение завершено': return '✅'
+            default: return '📌'
+        }
+    }
+
+    const formatDate = (dateString) => {
+        return new Date(dateString).toLocaleDateString('ru-RU', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        })
+    }
+
     return (
-        <div className="admin-panel">
-            {/* Заголовок админ-панели */}
-            <div className="admin-header">
-                <h1>Панель администратора</h1>
-                <div className="admin-user-info">
-                    <span>👋 {currentUser?.full_name || 'Admin'}</span>
-                    <button onClick={onLogout} className="logout-btn">Выйти</button>
+        <div>
+            <div>
+                <div>
+                    <h1>Панель администратора</h1>
+                    <span>Управление заявками</span>
+                </div>
+                <div>
+                    <span>{currentUser?.full_name || 'Admin'}</span>
+                    <button onClick={onLogout}>Выйти</button>
                 </div>
             </div>
 
-            {/* Статистика */}
-            <div className="stats-container">
-                <div className="stat-card">
-                    <h3>Всего заявок</h3>
-                    <p className="stat-number">{stats.total}</p>
+            <div>
+                <div>
+                    <div>📊</div>
+                    <div>
+                        <h3>Всего заявок</h3>
+                        <p>{stats.total}</p>
+                    </div>
                 </div>
-                <div className="stat-card" style={{borderColor: '#ff9800'}}>
-                    <h3>Новые</h3>
-                    <p className="stat-number" style={{color: '#ff9800'}}>{stats.new}</p>
+                <div>
+                    <div>🆕</div>
+                    <div>
+                        <h3>Новые</h3>
+                        <p>{stats.new}</p>
+                    </div>
                 </div>
-                <div className="stat-card" style={{borderColor: '#2196f3'}}>
-                    <h3>Идет обучение</h3>
-                    <p className="stat-number" style={{color: '#2196f3'}}>{stats.inProgress}</p>
+                <div>
+                    <div>📚</div>
+                    <div>
+                        <h3>Идет обучение</h3>
+                        <p>{stats.inProgress}</p>
+                    </div>
                 </div>
-                <div className="stat-card" style={{borderColor: '#4caf50'}}>
-                    <h3>Завершено</h3>
-                    <p className="stat-number" style={{color: '#4caf50'}}>{stats.completed}</p>
+                <div>
+                    <div>✅</div>
+                    <div>
+                        <h3>Завершено</h3>
+                        <p>{stats.completed}</p>
+                    </div>
                 </div>
             </div>
 
-            {/* Фильтры (только для отображения) */}
-            <div className="admin-filters">
-                <select>
-                    <option value="all">Все статусы</option>
-                    <option value="new">Новые</option>
-                    <option value="progress">Идет обучение</option>
-                    <option value="completed">Обучение завершено</option>
-                </select>
-                <input type="text" placeholder="Поиск по названию курса..." />
-                <button className="filter-btn">Применить фильтр</button>
+            <div>
+                <div>
+                    <label>Статус:</label>
+                    <select 
+                        value={filter} 
+                        onChange={(e) => setFilter(e.target.value)}
+                    >
+                        <option value="all">Все заявки</option>
+                        <option value="new">Новые</option>
+                        <option value="progress">Идет обучение</option>
+                        <option value="completed">Завершено</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label>Поиск:</label>
+                    <input 
+                        type="text" 
+                        placeholder="Поиск по курсу или пользователю..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+                
+                <button onClick={loadApplications}>
+                    Обновить
+                </button>
             </div>
 
-            {/* Таблица заявок */}
-            <div className="applications-table-container">
-                <table className="applications-table">
-                    <thead>
-                        <tr>
-                            <th>№</th>
-                            <th>Пользователь</th>
-                            <th>Курс</th>
-                            <th>Дата начала</th>
-                            <th>Способ оплаты</th>
-                            <th>Статус</th>
-                            <th>Действия</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {applications.map((app) => (
-                            <tr key={app.id}>
-                                <td>{app.id}</td>
-                                <td>{app.user_name}</td>
-                                <td>{app.course_name}</td>
-                                <td>{app.date}</td>
-                                <td>{app.payment_method}</td>
-                                <td>
-                                    <span 
-                                        className="status-badge"
-                                        style={{backgroundColor: getStatusColor(app.status)}}
-                                    >
-                                        {app.status}
-                                    </span>
-                                </td>
-                                <td>
-                                    <select 
-                                        value={selectedStatus[app.id] || app.status}
-                                        onChange={(e) => handleStatusChange(app.id, e.target.value)}
-                                        className="status-select"
-                                    >
-                                        {statusOptions.map(option => (
-                                            <option key={option} value={option}>
-                                                {option}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </td>
+            <div>
+                {loading ? (
+                    <div>Загрузка заявок...</div>
+                ) : filteredApplications.length === 0 ? (
+                    <div>
+                        <div>📭</div>
+                        <p>Заявки не найдены</p>
+                        <span>Попробуйте изменить фильтры поиска</span>
+                    </div>
+                ) : (
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>№</th>
+                                <th>Пользователь</th>
+                                <th>Курс</th>
+                                <th>Дата начала</th>
+                                <th>Способ оплаты</th>
+                                <th>Статус</th>
+                                <th>Действия</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {filteredApplications.map((app) => (
+                                <tr key={app.id}>
+                                    <td>#{app.id}</td>
+                                    <td>
+                                        <div>
+                                            <span>{app.user_full_name}</span>
+                                            <span>@{app.user_login}</span>
+                                        </div>
+                                    </td>
+                                    <td>{app.course_name}</td>
+                                    <td>{formatDate(app.start_date)}</td>
+                                    <td>
+                                        <span>
+                                            {app.payment_method === 'Наличный' ? '💵' : '📱'} {app.payment_method}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span style={{backgroundColor: getStatusColor(app.status)}}>
+                                            {getStatusEmoji(app.status)} {app.status}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <select 
+                                            value={app.status}
+                                            onChange={(e) => handleStatusChange(app.id, e.target.value)}
+                                            disabled={updatingId === app.id}
+                                        >
+                                            {statusOptions.map(option => (
+                                                <option key={option} value={option}>
+                                                    {option}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {updatingId === app.id && (
+                                            <span>⏳</span>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
             </div>
 
-            {/* Уведомление о демонстрационном режиме */}
-            <div className="demo-notice">
-                ⚠️ Демонстрационный режим: изменение статусов не сохраняется в базе данных
+            <div>
+                <span>
+                    Показано: {filteredApplications.length} из {applications.length} заявок
+                </span>
+                <button onClick={loadApplications}>
+                    Обновить данные
+                </button>
             </div>
         </div>
     )

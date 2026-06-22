@@ -6,12 +6,9 @@ export function RegForm({text, textBtn, addUser}){
     const [full_name, setFio] = useState('')
     const [phone, setPhone] = useState('')
     const [email, setEmail] = useState('')
-    
-    // Состояния для ошибок
     const [errors, setErrors] = useState({})
     const [isSubmitting, setIsSubmitting] = useState(false)
 
-    // Валидация логина (латиница и цифры, не менее 6 символов)
     const validateLogin = (value) => {
         const loginRegex = /^[a-zA-Z0-9]{6,}$/
         if (!loginRegex.test(value)) {
@@ -20,7 +17,6 @@ export function RegForm({text, textBtn, addUser}){
         return ''
     }
 
-    // Валидация пароля (минимум 8 символов)
     const validatePassword = (value) => {
         if (value.length < 8) {
             return 'Пароль должен содержать минимум 8 символов'
@@ -28,7 +24,6 @@ export function RegForm({text, textBtn, addUser}){
         return ''
     }
 
-    // Валидация ФИО (кириллица и пробелы)
     const validateFullName = (value) => {
         const fioRegex = /^[А-Яа-яЁё\s]+$/
         if (!fioRegex.test(value)) {
@@ -40,7 +35,6 @@ export function RegForm({text, textBtn, addUser}){
         return ''
     }
 
-    // Валидация телефона (формат: 8(XXX)XXX-XX-XX)
     const validatePhone = (value) => {
         const phoneRegex = /^8\(\d{3}\)\d{3}-\d{2}-\d{2}$/
         if (!phoneRegex.test(value)) {
@@ -49,7 +43,6 @@ export function RegForm({text, textBtn, addUser}){
         return ''
     }
 
-    // Валидация email
     const validateEmail = (value) => {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
         if (!emailRegex.test(value)) {
@@ -117,7 +110,6 @@ export function RegForm({text, textBtn, addUser}){
         e.preventDefault()
         setIsSubmitting(true)
 
-        // Проверяем все поля
         const loginError = validateLogin(login)
         const passwordError = validatePassword(password)
         const fioError = validateFullName(full_name)
@@ -134,7 +126,6 @@ export function RegForm({text, textBtn, addUser}){
 
         setErrors(newErrors)
 
-        // Проверяем наличие ошибок
         const hasErrors = Object.values(newErrors).some(error => error !== '')
         
         if (hasErrors) {
@@ -153,8 +144,6 @@ export function RegForm({text, textBtn, addUser}){
 
         try {
             await addUser(objectUser)
-            
-            // Очищаем форму только после успешной отправки
             setLogin('')
             setPassword('')
             setFio('')
@@ -168,7 +157,6 @@ export function RegForm({text, textBtn, addUser}){
         }
     }
 
-    // Форматирование телефона при вводе
     const formatPhone = (value) => {
         const digits = value.replace(/\D/g, '')
         if (digits.length === 0) return ''
@@ -195,11 +183,10 @@ export function RegForm({text, textBtn, addUser}){
                     value={login}
                     placeholder='Login (латиница, минимум 6 символов)'
                     onChange={onChangeLogin}
-                    className={errors.login ? 'error' : ''}
                     required
                     disabled={isSubmitting}
                 />
-                {errors.login && <span className="error-message">{errors.login}</span>}
+                {errors.login && <span>{errors.login}</span>}
             </div>
 
             <div>
@@ -208,11 +195,10 @@ export function RegForm({text, textBtn, addUser}){
                     value={password}
                     placeholder='Password (минимум 8 символов)'
                     onChange={onChangePassword}
-                    className={errors.password ? 'error' : ''}
                     required
                     disabled={isSubmitting}
                 />
-                {errors.password && <span className="error-message">{errors.password}</span>}
+                {errors.password && <span>{errors.password}</span>}
             </div>
 
             <div>
@@ -221,11 +207,10 @@ export function RegForm({text, textBtn, addUser}){
                     value={full_name}
                     placeholder='Full Name (кириллица)'
                     onChange={onChangeFio}
-                    className={errors.full_name ? 'error' : ''}
                     required
                     disabled={isSubmitting}
                 />
-                {errors.full_name && <span className="error-message">{errors.full_name}</span>}
+                {errors.full_name && <span>{errors.full_name}</span>}
             </div>
 
             <div>
@@ -234,11 +219,10 @@ export function RegForm({text, textBtn, addUser}){
                     value={phone}
                     placeholder='Phone: 8(XXX)XXX-XX-XX'
                     onChange={handlePhoneChange}
-                    className={errors.phone ? 'error' : ''}
                     required
                     disabled={isSubmitting}
                 />
-                {errors.phone && <span className="error-message">{errors.phone}</span>}
+                {errors.phone && <span>{errors.phone}</span>}
             </div>
 
             <div>
@@ -247,11 +231,10 @@ export function RegForm({text, textBtn, addUser}){
                     value={email}
                     placeholder='Email'
                     onChange={onChangeEmail}
-                    className={errors.email ? 'error' : ''}
                     required
                     disabled={isSubmitting}
                 />
-                {errors.email && <span className="error-message">{errors.email}</span>}
+                {errors.email && <span>{errors.email}</span>}
             </div>
 
             <button type='submit' disabled={isSubmitting}>

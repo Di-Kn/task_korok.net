@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { RegForm } from './forms/RegForm'
 import { LogForm } from './forms/LogForm'
 import { ApplicationForm } from './forms/ApplicationForm'
 import { AdminPanel } from './forms/AdminPanel'
 import { regUser } from './fetch/regUser'
 import { logUser } from './fetch/logUser'
-import './App.css'
+import { getUserApplications } from './fetch/getUserApplications'
 
 function App() {
     const [users, setUsers] = useState([])
@@ -13,13 +13,39 @@ function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false)
     const [currentUser, setCurrentUser] = useState(null)
     const [isAdmin, setIsAdmin] = useState(false)
+    const [userApplications, setUserApplications] = useState([])
+    const [loading, setLoading] = useState(false)
+
+    useEffect(() => {
+        if (isAuthenticated && !isAdmin && currentUser && currentUser.id) {
+            console.log('Загрузка заявок для пользователя:', currentUser)
+            loadUserApplications()
+        }
+    }, [isAuthenticated, currentUser, isAdmin])
+
+    const loadUserApplications = async () => {
+        if (!currentUser || !currentUser.id) {
+            console.log('Нет currentUser или id')
+            setUserApplications([])
+            return
+        }
+        setLoading(true)
+        try {
+            console.log('Запрос заявок для userId:', currentUser.id)
+            const apps = await getUserApplications(currentUser.id)
+            console.log('Получены заявки:', apps)
+            setUserApplications(Array.isArray(apps) ? apps : [])
+        } catch (error) {
+            console.error('Ошибка загрузки заявок:', error)
+            setUserApplications([])
+        } finally {
+            setLoading(false)
+        }
+    }
 
     const addUser = async (user) => {
-        console.log('App.js - addUser получил:', user)
         try {
             const result = await regUser(user)
-            console.log('Результат регистрации:', result)
-            
             if (result && result.success) {
                 setUsers([...users, user])
                 alert('Регистрация успешна! Теперь войдите в систему.')
@@ -34,7 +60,6 @@ function App() {
     }
 
     const handleLogin = async (userData) => {
-        console.log('App.js - handleLogin получил:', userData)
         try {
             if (userData.login === 'Admin' && userData.password === 'KorokNET') {
                 setIsAuthenticated(true)
@@ -51,13 +76,14 @@ function App() {
             const result = await logUser(userData)
             console.log('Результат входа:', result)
             
-            if (result && result.length > 0) {
+            if (result && result.success && result.user) {
                 setIsAuthenticated(true)
                 setIsAdmin(false)
-                setCurrentUser(result[0])
-                alert(`Добро пожаловать, ${result[0].full_name}!`)
+                setCurrentUser(result.user)
+                console.log('Установлен пользователь:', result.user)
+                alert(`Добро пожаловать, ${result.user.full_name}!`)
             } else {
-                alert('Неверный логин или пароль!')
+                alert(result?.message || 'Неверный логин или пароль!')
             }
         } catch (error) {
             console.error('Ошибка:', error)
@@ -69,11 +95,17 @@ function App() {
         setIsAuthenticated(false)
         setIsAdmin(false)
         setCurrentUser(null)
+        setUserApplications([])
         setShowRegForm(true)
     }
 
     const toggleForm = () => {
         setShowRegForm(!showRegForm)
+    }
+
+    const handleApplicationCreated = () => {
+        console.log('Заявка создана, обновляем список')
+        loadUserApplications()
     }
 
     if (isAuthenticated && isAdmin) {
@@ -91,12 +123,15 @@ function App() {
                 <ApplicationForm 
                     currentUser={currentUser}
                     onLogout={handleLogout}
+                    applications={userApplications}
+                    onApplicationCreated={handleApplicationCreated}
+                    loading={loading}
                 />
             </div>
         )
     }
 
-        return (
+    return (
         <div>
             {showRegForm ? (
                 <RegForm 
