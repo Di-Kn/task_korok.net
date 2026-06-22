@@ -14,20 +14,17 @@ function App() {
 
     const addUser = async (user) => {
         const result = await regUser(user)
-        console.log('Результат регистрации:', result)
-        
-        if (result && result.success === true) {
+        if (result && result.success) {
             setUsers([...users, user])
-            alert('Регистрация успешна!')
+            alert('Регистрация успешна! Теперь войдите в систему.')
             setShowRegForm(false)
+        } else {
+            alert('Ошибка регистрации. Попробуйте другой логин.')
         }
     }
 
     const handleLogin = async (userData) => {
-        console.log('App.js - handleLogin получил:', userData)
         const result = await logUser(userData)
-        console.log('Результат входа:', result)
-        
         if (result && result.length > 0) {
             setIsAuthenticated(true)
             setCurrentUser(result[0])

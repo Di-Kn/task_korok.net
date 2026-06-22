@@ -39,6 +39,27 @@ app.post('/login', (req, res) => {
   })
 })
 
+
+app.post('/application', function (req, res) {
+    const application = [
+        req.body.ap_name,
+        req.body.ap_date,
+        req.body.ap_pay
+    ]
+    
+    const sql = "INSERT INTO application(ap_name, ap_date, ap_pay) VALUES(?, ?, ?)"
+    
+    connection.query(sql, application, function(err, results) {
+        if (err) {
+            console.log(err)
+            res.status(500).json({ success: false, error: err.message })
+        } else {
+            console.log("Заявка добавлена")
+            res.json({ success: true, id: results.insertId })
+        }
+    })
+})
+
 app.listen(3000, function () {
-  console.log('web server listening on port 3000')
+    console.log('web server listening on port 3000')
 })
